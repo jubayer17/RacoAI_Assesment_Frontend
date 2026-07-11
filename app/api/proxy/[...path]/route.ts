@@ -6,11 +6,17 @@ const BACKEND = (
   "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
-async function proxy(req: NextRequest, pathParts: string[]) {
-  const target = `${BACKEND}/${pathParts.join("/")}${req.nextUrl.search}`;
+async function proxy(req: NextRequest) {
+  // Keep the real path (Next catch-all drops the trailing slash).
+  let path = req.nextUrl.pathname.replace(/^\/api\/proxy/, "");
+  if (!path.startsWith("/")) path = `/${path}`;
+  if (!path.endsWith("/")) path = `${path}/`;
+
+  const target = `${BACKEND}${path}${req.nextUrl.search}`;
 
   const headers = new Headers();
   headers.set("ngrok-skip-browser-warning", "true");
+  headers.set("Accept", "application/json");
 
   const contentType = req.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
@@ -20,14 +26,44 @@ async function proxy(req: NextRequest, pathParts: string[]) {
 
   const method = req.method.toUpperCase();
   const hasBody = !["GET", "HEAD"].includes(method);
+  const body = hasBody ? await req.text() : undefined;
 
-  const upstream = await fetch(target, {
-    method,
-    headers,
-    body: hasBody ? await req.text() : undefined,
-    cache: "no-store",
-  });
+  try {
+    const upstream = await fetch(target, {
+      method,
+      headers,
+      body,
+      cache: "no-store",
+      redirect: "manual",
+    });
 
+    // Follow one Django APPEND_SLASH redirect without dropping the body.
+    if (hasBody && [301, 302, 307, 308].includes(upstream.status)) {
+      const location = upstream.headers.get("location");
+      if (location) {
+        const redirected = await fetch(location, {
+          method,
+          headers,
+          body,
+          cache: "no-store",
+        });
+        return forward(redirected);
+      }
+    }
+
+    return forward(upstream);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      {
+        detail: `Proxy could not reach backend at ${target}. Is Django/ngrok running? (${message})`,
+      },
+      { status: 502 }
+    );
+  }
+}
+
+async function forward(upstream: Response) {
   const responseHeaders = new Headers();
   const upstreamType = upstream.headers.get("content-type");
   if (upstreamType) responseHeaders.set("content-type", upstreamType);
@@ -38,26 +74,24 @@ async function proxy(req: NextRequest, pathParts: string[]) {
   });
 }
 
-type Ctx = { params: { path: string[] } };
-
-export async function GET(req: NextRequest, ctx: Ctx) {
-  return proxy(req, ctx.params.path);
+export async function GET(req: NextRequest) {
+  return proxy(req);
 }
 
-export async function POST(req: NextRequest, ctx: Ctx) {
-  return proxy(req, ctx.params.path);
+export async function POST(req: NextRequest) {
+  return proxy(req);
 }
 
-export async function PUT(req: NextRequest, ctx: Ctx) {
-  return proxy(req, ctx.params.path);
+export async function PUT(req: NextRequest) {
+  return proxy(req);
 }
 
-export async function PATCH(req: NextRequest, ctx: Ctx) {
-  return proxy(req, ctx.params.path);
+export async function PATCH(req: NextRequest) {
+  return proxy(req);
 }
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
-  return proxy(req, ctx.params.path);
+export async function DELETE(req: NextRequest) {
+  return proxy(req);
 }
 
 export async function OPTIONS() {

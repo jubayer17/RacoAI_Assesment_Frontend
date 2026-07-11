@@ -70,3 +70,30 @@ export async function fetchProducts(): Promise<Product[]> {
   const data = await api<Product[] | { results: Product[] }>("/api/products/");
   return Array.isArray(data) ? data : data.results ?? [];
 }
+
+export type CreateProductInput = {
+  name: string;
+  sku: string;
+  description?: string;
+  price: string | number;
+  stock: number;
+  status?: "active" | "inactive";
+};
+
+export async function createProduct(
+  token: string,
+  input: CreateProductInput
+): Promise<Product> {
+  return api<Product>("/api/products/admin/products/", {
+    method: "POST",
+    token,
+    body: {
+      name: input.name,
+      sku: input.sku,
+      description: input.description || "",
+      price: input.price,
+      stock: input.stock,
+      status: input.status || "active",
+    },
+  });
+}

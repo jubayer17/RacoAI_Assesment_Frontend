@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
+  createProduct,
   fetchProducts,
   type PaymentProvider,
   type PaymentResponse,
@@ -17,12 +18,21 @@ export default function ShopPage() {
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
   const [qty, setQty] = useState<Record<number, number>>({});
   const [provider, setProvider] = useState<PaymentProvider>("stripe");
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const [newName, setNewName] = useState("");
+  const [newSku, setNewSku] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newStock, setNewStock] = useState("10");
+  const [newDescription, setNewDescription] = useState("");
 
   useEffect(() => {
     const access = getToken();
@@ -41,6 +51,18 @@ export default function ShopPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+
+    return products.filter((p) => {
+      const byId = String(p.id) === q || String(p.id).includes(q);
+      const byName = p.name.toLowerCase().includes(q);
+      const bySku = p.sku.toLowerCase().includes(q);
+      return byId || byName || bySku;
+    });
+  }, [products, search]);
+
   const cart = useMemo(() => {
     return products
       .map((p) => ({ product: p, quantity: qty[p.id] || 0 }))
@@ -57,6 +79,54 @@ export default function ShopPage() {
   function logout() {
     clearSession();
     router.replace("/login");
+  }
+
+  async function refreshProducts() {
+    const refreshed = await fetchProducts();
+    setProducts(refreshed);
+  }
+
+  async function onAddProduct(e: FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    setError("");
+    setMessage("");
+    setAdding(true);
+
+    try {
+      const sku =
+        newSku.trim() ||
+        `SKU-${Date.now().toString().slice(-8)}`;
+
+      const created = await createProduct(token, {
+        name: newName.trim(),
+        sku,
+        price: newPrice,
+        stock: Number(newStock) || 0,
+        description: newDescription.trim(),
+        status: "active",
+      });
+
+      setMessage(`Product #${created.id} “${created.name}” added.`);
+      setNewName("");
+      setNewSku("");
+      setNewPrice("");
+      setNewStock("10");
+      setNewDescription("");
+      setShowAddForm(false);
+      await refreshProducts();
+    } catch (err: unknown) {
+      const text = err instanceof Error ? err.message : String(err);
+      if (text.toLowerCase().includes("permission") || text.includes("403")) {
+        setError(
+          "Adding products requires a staff account. Sign in as admin@example.com / Admin12345!"
+        );
+      } else {
+        setError(text);
+      }
+    } finally {
+      setAdding(false);
+    }
   }
 
   async function checkout() {
@@ -95,9 +165,7 @@ export default function ShopPage() {
         `Order #${order.id} paid with ${provider}. Status: ${verified.status}`
       );
       setQty({});
-
-      const refreshed = await fetchProducts();
-      setProducts(refreshed);
+      await refreshProducts();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -133,37 +201,148 @@ export default function ShopPage() {
       </header>
 
       <main className="mx-auto w-[min(1120px,calc(100%-2rem))] animate-rise pb-14 pt-6">
-        <div className="mb-6">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            Catalog
-          </h1>
-          <p className="mt-2 max-w-xl leading-relaxed text-muted">
-            Choose quantities, then checkout with Stripe or bKash. Stock updates
-            after a successful payment.
-          </p>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              Catalog
+            </h1>
+            <p className="mt-2 max-w-xl leading-relaxed text-muted">
+              Search by product ID or name, add products (staff), then checkout
+              with Stripe or bKash.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowAddForm((v) => !v)}
+          >
+            {showAddForm ? "Close form" : "Add product"}
+          </button>
         </div>
 
         {error ? <div className="alert alert-error">{error}</div> : null}
         {message ? <div className="alert alert-ok">{message}</div> : null}
 
+        {showAddForm ? (
+          <section className="panel mb-5">
+            <h2 className="mb-4 text-base font-semibold tracking-tight">
+              Add product
+            </h2>
+            <p className="mb-4 text-sm text-muted">
+              Requires a staff account (seeded admin:{" "}
+              <span className="font-medium text-ink">admin@example.com</span>).
+            </p>
+            <form
+              onSubmit={onAddProduct}
+              className="grid gap-3 sm:grid-cols-2"
+            >
+              <div className="field mb-0">
+                <label htmlFor="new-name">Name</label>
+                <input
+                  id="new-name"
+                  className="field-input"
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Wireless Mouse"
+                />
+              </div>
+              <div className="field mb-0">
+                <label htmlFor="new-sku">SKU (optional)</label>
+                <input
+                  id="new-sku"
+                  className="field-input"
+                  value={newSku}
+                  onChange={(e) => setNewSku(e.target.value)}
+                  placeholder="Auto-generated if empty"
+                />
+              </div>
+              <div className="field mb-0">
+                <label htmlFor="new-price">Price</label>
+                <input
+                  id="new-price"
+                  className="field-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  placeholder="29.99"
+                />
+              </div>
+              <div className="field mb-0">
+                <label htmlFor="new-stock">Stock</label>
+                <input
+                  id="new-stock"
+                  className="field-input"
+                  type="number"
+                  min="0"
+                  required
+                  value={newStock}
+                  onChange={(e) => setNewStock(e.target.value)}
+                />
+              </div>
+              <div className="field mb-0 sm:col-span-2">
+                <label htmlFor="new-description">Description</label>
+                <input
+                  id="new-description"
+                  className="field-input"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Short product description"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={adding}
+                >
+                  {adding ? "Saving…" : "Save product"}
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
         <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
           <section className="panel">
-            <h2 className="mb-4 text-base font-semibold tracking-tight">
-              Products
-            </h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-semibold tracking-tight">
+                Products
+              </h2>
+              <div className="relative w-full max-w-sm">
+                <label htmlFor="search" className="sr-only">
+                  Search products
+                </label>
+                <input
+                  id="search"
+                  className="field-input"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by ID or product name…"
+                />
+              </div>
+            </div>
+
             {loading ? (
               <p className="py-6 text-muted">Loading products…</p>
-            ) : products.length === 0 ? (
-              <p className="py-6 text-muted">No active products found.</p>
+            ) : filteredProducts.length === 0 ? (
+              <p className="py-6 text-muted">
+                {search
+                  ? `No products match “${search}”.`
+                  : "No active products found."}
+              </p>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
-                {products.map((p) => (
+                {filteredProducts.map((p) => (
                   <article
                     key={p.id}
                     className="rounded-[14px] border border-line bg-gradient-to-b from-white to-slate-50 p-4 transition hover:-translate-y-0.5 hover:border-slate-300"
                   >
                     <p className="text-xs uppercase tracking-wider text-muted">
-                      {p.sku}
+                      ID {p.id} · {p.sku}
                     </p>
                     <h3 className="mt-1.5 text-[1.05rem] font-semibold tracking-tight">
                       {p.name}

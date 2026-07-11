@@ -209,13 +209,22 @@ export default function ShopPage() {
 
       const checkoutUrl = payment.checkout_url || "";
       const bkashUrl = payment.bkash_url || "";
+      const redirectUrl = [checkoutUrl, bkashUrl].find((url) =>
+        /^https?:\/\//i.test(url)
+      );
 
-      // Real Stripe Checkout / bKash hosted page
-      if (checkoutUrl || bkashUrl) {
+      // Real Stripe Checkout / bKash hosted page only
+      if (redirectUrl) {
         sessionStorage.setItem("pending_payment_id", String(payment.id));
         sessionStorage.setItem("pending_order_id", String(order.id));
-        window.location.href = checkoutUrl || bkashUrl;
+        window.location.href = redirectUrl;
         return;
+      }
+
+      if (provider === "bkash" && payment.mode !== "mock") {
+        throw new Error(
+          "bKash did not return a payment URL. Restart Django after updating .env, then try again."
+        );
       }
 
       // Mock mode (no provider keys): verify immediately

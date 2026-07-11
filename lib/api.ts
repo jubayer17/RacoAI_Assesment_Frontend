@@ -55,6 +55,8 @@ export async function api<T>(
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      // Bypass ngrok free-tier browser warning page (breaks CORS preflight)
+      "ngrok-skip-browser-warning": "true",
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
     },
     method: options.method || "GET",

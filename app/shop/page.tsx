@@ -51,6 +51,58 @@ export default function ShopPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
+  // After returning from Stripe Checkout / bKash
+  useEffect(() => {
+    if (!token) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get("payment");
+    if (!paymentState) return;
+
+    const pendingId = sessionStorage.getItem("pending_payment_id");
+    const orderId = sessionStorage.getItem("pending_order_id");
+
+    async function finishPayment() {
+      setError("");
+      setMessage("");
+
+      if (paymentState === "cancelled") {
+        setError("Payment was cancelled. You can try again.");
+        sessionStorage.removeItem("pending_payment_id");
+        sessionStorage.removeItem("pending_order_id");
+        router.replace("/shop");
+        return;
+      }
+
+      if (paymentState === "success" && pendingId) {
+        try {
+          const verified = await api<PaymentResponse>(
+            "/api/payments/verify/",
+            {
+              method: "POST",
+              token: token!,
+              body: { payment_id: Number(pendingId) },
+            }
+          );
+          setMessage(
+            `Order #${orderId || verified.order || "?"} payment status: ${verified.status}`
+          );
+          setQty({});
+          const refreshed = await fetchProducts();
+          setProducts(refreshed);
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : String(e));
+        } finally {
+          sessionStorage.removeItem("pending_payment_id");
+          sessionStorage.removeItem("pending_order_id");
+          router.replace("/shop");
+        }
+      }
+    }
+
+    void finishPayment();
+  }, [token, router]);
+
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
@@ -155,6 +207,18 @@ export default function ShopPage() {
         body: { order_id: order.id, provider },
       });
 
+      const checkoutUrl = payment.checkout_url || "";
+      const bkashUrl = payment.bkash_url || "";
+
+      // Real Stripe Checkout / bKash hosted page
+      if (checkoutUrl || bkashUrl) {
+        sessionStorage.setItem("pending_payment_id", String(payment.id));
+        sessionStorage.setItem("pending_order_id", String(order.id));
+        window.location.href = checkoutUrl || bkashUrl;
+        return;
+      }
+
+      // Mock mode (no provider keys): verify immediately
       const verified = await api<PaymentResponse>("/api/payments/verify/", {
         method: "POST",
         token,
@@ -162,7 +226,7 @@ export default function ShopPage() {
       });
 
       setMessage(
-        `Order #${order.id} paid with ${provider}. Status: ${verified.status}`
+        `Order #${order.id} paid with ${provider} (mock). Status: ${verified.status}`
       );
       setQty({});
       await refreshProducts();

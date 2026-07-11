@@ -23,6 +23,13 @@ export type PaymentResponse = {
   id: number;
   status: string;
   provider?: string;
+  checkout_url?: string;
+  bkash_url?: string;
+  mode?: string;
+  client_secret?: string;
+  order?: number;
+  transaction_id?: string;
+  raw_response?: Record<string, unknown>;
 };
 
 export type PaymentProvider = "stripe" | "bkash";

@@ -49,25 +49,38 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-panel">
-        <h1 className="auth-panel__brand">Raco AI Assessment</h1>
-        <p className="auth-panel__lead">
+    <main className="grid min-h-screen place-items-center px-4 py-10">
+      <section className="w-full max-w-md animate-rise rounded-[22px] border border-line bg-white p-7 shadow-panel sm:p-8">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
+          Raco AI Assessment
+        </h1>
+        <p className="mt-2 mb-6 leading-relaxed text-muted">
           Sign in to browse products, place orders, and pay with Stripe or
           bKash.
         </p>
 
-        <div className="tabs" role="tablist">
+        <div
+          className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1"
+          role="tablist"
+        >
           <button
             type="button"
-            className={`tab ${mode === "login" ? "is-active" : ""}`}
+            className={`rounded-full px-3 py-2.5 text-sm font-semibold transition ${
+              mode === "login"
+                ? "bg-white text-ink shadow-sm"
+                : "bg-transparent text-muted"
+            }`}
             onClick={() => setMode("login")}
           >
             Sign in
           </button>
           <button
             type="button"
-            className={`tab ${mode === "register" ? "is-active" : ""}`}
+            className={`rounded-full px-3 py-2.5 text-sm font-semibold transition ${
+              mode === "register"
+                ? "bg-white text-ink shadow-sm"
+                : "bg-transparent text-muted"
+            }`}
             onClick={() => setMode("register")}
           >
             Create account
@@ -83,6 +96,7 @@ export default function LoginPage() {
             <input
               id="email"
               type="email"
+              className="field-input"
               autoComplete="email"
               required
               value={email}
@@ -95,6 +109,7 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
+              className="field-input"
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
               }
@@ -107,7 +122,7 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            className="btn btn-primary btn-block"
+            className="btn btn-primary w-full"
             disabled={loading}
           >
             {loading

@@ -12,8 +12,8 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <main className="auth-page">
-      <p className="auth-panel__lead">Loading…</p>
+    <main className="grid min-h-screen place-items-center px-4">
+      <p className="text-muted">Loading…</p>
     </main>
   );
 }

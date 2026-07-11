@@ -107,22 +107,24 @@ export default function ShopPage() {
 
   if (!token) {
     return (
-      <main className="auth-page">
-        <p className="auth-panel__lead">Checking session…</p>
+      <main className="grid min-h-screen place-items-center px-4">
+        <p className="text-muted">Checking session…</p>
       </main>
     );
   }
 
   return (
     <>
-      <header className="site-header">
-        <div className="shell site-header__inner">
-          <div className="brand">
-            <div className="brand__name">Raco AI Assessment</div>
-            <div className="brand__tag">Ordering & payments</div>
+      <header className="sticky top-0 z-20 border-b border-line/80 bg-slate-100/85 backdrop-blur-md">
+        <div className="mx-auto flex min-h-[72px] w-[min(1120px,calc(100%-2rem))] items-center justify-between gap-4">
+          <div>
+            <div className="font-display text-xl font-semibold tracking-tight text-ink">
+              Raco AI Assessment
+            </div>
+            <div className="text-xs text-muted">Ordering & payments</div>
           </div>
-          <div className="header-actions">
-            <span className="user-chip">{email}</span>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-muted sm:inline">{email}</span>
             <button type="button" className="btn btn-ghost" onClick={logout}>
               Sign out
             </button>
@@ -130,46 +132,56 @@ export default function ShopPage() {
         </div>
       </header>
 
-      <main className="shell shop-page">
-        <div className="shop-hero">
-          <div>
-            <h1>Catalog</h1>
-            <p>
-              Choose quantities, then checkout with Stripe or bKash. Stock
-              updates after a successful payment.
-            </p>
-          </div>
+      <main className="mx-auto w-[min(1120px,calc(100%-2rem))] animate-rise pb-14 pt-6">
+        <div className="mb-6">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            Catalog
+          </h1>
+          <p className="mt-2 max-w-xl leading-relaxed text-muted">
+            Choose quantities, then checkout with Stripe or bKash. Stock updates
+            after a successful payment.
+          </p>
         </div>
 
         {error ? <div className="alert alert-error">{error}</div> : null}
         {message ? <div className="alert alert-ok">{message}</div> : null}
 
-        <div className="layout">
+        <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
           <section className="panel">
-            <h2>Products</h2>
+            <h2 className="mb-4 text-base font-semibold tracking-tight">
+              Products
+            </h2>
             {loading ? (
-              <p className="empty-state">Loading products…</p>
+              <p className="py-6 text-muted">Loading products…</p>
             ) : products.length === 0 ? (
-              <p className="empty-state">No active products found.</p>
+              <p className="py-6 text-muted">No active products found.</p>
             ) : (
-              <div className="product-grid">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
                 {products.map((p) => (
-                  <article className="product" key={p.id}>
-                    <p className="product__sku">{p.sku}</p>
-                    <h3 className="product__name">{p.name}</h3>
-                    <p className="product__meta">
-                      <span className="product__price">
+                  <article
+                    key={p.id}
+                    className="rounded-[14px] border border-line bg-gradient-to-b from-white to-slate-50 p-4 transition hover:-translate-y-0.5 hover:border-slate-300"
+                  >
+                    <p className="text-xs uppercase tracking-wider text-muted">
+                      {p.sku}
+                    </p>
+                    <h3 className="mt-1.5 text-[1.05rem] font-semibold tracking-tight">
+                      {p.name}
+                    </h3>
+                    <p className="mb-3.5 mt-1.5 text-sm text-muted">
+                      <span className="font-bold text-ink">
                         ${Number(p.price).toFixed(2)}
                       </span>
                       {" · "}
                       {p.stock} in stock
                     </p>
-                    <div className="qty-row">
-                      <span>Qty</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-muted">Qty</span>
                       <input
                         type="number"
                         min={0}
                         max={p.stock}
+                        className="w-20 rounded-[10px] border border-line bg-white px-2.5 py-2"
                         value={qty[p.id] || 0}
                         onChange={(e) =>
                           setQty((prev) => ({
@@ -186,16 +198,22 @@ export default function ShopPage() {
           </section>
 
           <aside className="panel">
-            <h2>Checkout</h2>
+            <h2 className="mb-4 text-base font-semibold tracking-tight">
+              Checkout
+            </h2>
+
             {cart.length === 0 ? (
-              <p className="cart-empty">Your cart is empty.</p>
+              <p className="mb-4 text-sm text-muted">Your cart is empty.</p>
             ) : (
-              <div className="cart-list">
+              <div className="mb-4 grid gap-3">
                 {cart.map(({ product, quantity }) => (
-                  <div className="cart-item" key={product.id}>
+                  <div
+                    key={product.id}
+                    className="flex justify-between gap-3 border-b border-line pb-3 last:border-b-0 last:pb-0"
+                  >
                     <div>
-                      <strong>{product.name}</strong>
-                      <span>
+                      <strong className="mb-0.5 block">{product.name}</strong>
+                      <span className="text-sm text-muted">
                         {quantity} × ${Number(product.price).toFixed(2)}
                       </span>
                     </div>
@@ -207,16 +225,17 @@ export default function ShopPage() {
               </div>
             )}
 
-            <div className="cart-total">
+            <div className="mb-4 flex items-center justify-between font-bold">
               <span>Total</span>
               <span>${cartTotal.toFixed(2)}</span>
             </div>
 
-            <div className="checkout-actions">
-              <div className="field" style={{ marginBottom: 0 }}>
+            <div className="grid gap-3">
+              <div className="field mb-0">
                 <label htmlFor="provider">Payment provider</label>
                 <select
                   id="provider"
+                  className="field-input"
                   value={provider}
                   onChange={(e) =>
                     setProvider(e.target.value as PaymentProvider)
@@ -228,7 +247,7 @@ export default function ShopPage() {
               </div>
               <button
                 type="button"
-                className="btn btn-primary btn-block"
+                className="btn btn-primary w-full"
                 disabled={paying || cart.length === 0}
                 onClick={checkout}
               >

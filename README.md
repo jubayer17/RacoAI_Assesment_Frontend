@@ -1,6 +1,6 @@
 # Frontend (Vercel)
 
-Next.js + TypeScript UI for Raco AI Assessment.
+Next.js + TypeScript + Tailwind CSS UI for Raco AI Assessment.
 
 ## Pages
 

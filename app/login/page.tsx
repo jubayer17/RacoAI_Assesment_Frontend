@@ -5,15 +5,11 @@ import { useRouter } from "next/navigation";
 import { api, type LoginResponse } from "@/lib/api";
 import { getToken, setSession } from "@/lib/auth";
 
-type Mode = "login" | "register";
-
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -23,18 +19,9 @@ export default function LoginPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
-    setInfo("");
     setLoading(true);
 
     try {
-      if (mode === "register") {
-        await api("/api/users/register/", {
-          method: "POST",
-          body: { email, password },
-        });
-        setInfo("Account created. Signing you in…");
-      }
-
       const data = await api<LoginResponse>("/api/users/login/", {
         method: "POST",
         body: { email, password },
@@ -59,36 +46,29 @@ export default function LoginPage() {
           bKash.
         </p>
 
-        <div
-          className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1"
-          role="tablist"
-        >
+        <div className="mb-5 rounded-xl border border-line bg-slate-50 px-4 py-3 text-sm text-ink">
+          <p className="font-semibold">Demo admin</p>
+          <p className="mt-1 text-muted">
+            Email:{" "}
+            <span className="font-mono text-ink">admin@example.com</span>
+          </p>
+          <p className="text-muted">
+            Password:{" "}
+            <span className="font-mono text-ink">Admin12345!</span>
+          </p>
           <button
             type="button"
-            className={`rounded-full px-3 py-2.5 text-sm font-semibold transition ${
-              mode === "login"
-                ? "bg-white text-ink shadow-sm"
-                : "bg-transparent text-muted"
-            }`}
-            onClick={() => setMode("login")}
+            className="mt-2 text-sm font-semibold text-teal-800 underline-offset-2 hover:underline"
+            onClick={() => {
+              setEmail("admin@example.com");
+              setPassword("Admin12345!");
+            }}
           >
-            Sign in
-          </button>
-          <button
-            type="button"
-            className={`rounded-full px-3 py-2.5 text-sm font-semibold transition ${
-              mode === "register"
-                ? "bg-white text-ink shadow-sm"
-                : "bg-transparent text-muted"
-            }`}
-            onClick={() => setMode("register")}
-          >
-            Create account
+            Fill admin credentials
           </button>
         </div>
 
         {error ? <div className="alert alert-error">{error}</div> : null}
-        {info ? <div className="alert alert-ok">{info}</div> : null}
 
         <form onSubmit={onSubmit}>
           <div className="field">
@@ -110,9 +90,7 @@ export default function LoginPage() {
               id="password"
               type="password"
               className="field-input"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
+              autoComplete="current-password"
               required
               minLength={8}
               value={password}
@@ -125,11 +103,7 @@ export default function LoginPage() {
             className="btn btn-primary w-full"
             disabled={loading}
           >
-            {loading
-              ? "Please wait…"
-              : mode === "login"
-                ? "Sign in"
-                : "Create account & continue"}
+            {loading ? "Please wait…" : "Sign in"}
           </button>
         </form>
       </section>

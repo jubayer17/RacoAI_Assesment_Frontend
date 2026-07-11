@@ -20,7 +20,10 @@ Open http://localhost:3000
 ## Vercel
 
 1. Root directory = this repo
-2. Env: `NEXT_PUBLIC_API_URL` = backend URL (no trailing slash)
+2. Env vars:
+   - `NEXT_PUBLIC_API_URL` = your ngrok/backend URL (no trailing slash)
+   - optional: `BACKEND_URL` = same value (used by the server proxy)
 3. Deploy
 
-Backend CORS must allow your Vercel domain.
+The browser calls same-origin `/api/proxy/...` so CORS/ngrok interstitial issues are avoided.
+Backend CORS must still allow local `npm run dev` origins when not using the proxy.

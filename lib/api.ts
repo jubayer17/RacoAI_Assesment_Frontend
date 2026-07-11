@@ -33,8 +33,20 @@ export type ApiOptions = {
   body?: unknown;
 };
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+function resolveApiBase(): string {
+  const configured =
+    process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+  // In the browser, proxy remote backends (ngrok) through Next.js to avoid CORS
+  // and ngrok's free interstitial page.
+  if (typeof window !== "undefined") {
+    const isLocal =
+      configured.includes("127.0.0.1") || configured.includes("localhost");
+    if (!isLocal) return "/api/proxy";
+  }
+
+  return configured.replace(/\/$/, "");
+}
 
 function formatError(data: unknown): string {
   if (!data || typeof data !== "object") return "Request failed";
@@ -52,14 +64,21 @@ export async function api<T>(
   path: string,
   options: ApiOptions = {}
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      // Bypass ngrok free-tier browser warning page (breaks CORS preflight)
-      "ngrok-skip-browser-warning": "true",
-      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
-    },
-    method: options.method || "GET",
+  const method = (options.method || "GET").toUpperCase();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "true",
+  };
+
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (options.token) {
+    headers.Authorization = `Bearer ${options.token}`;
+  }
+
+  const res = await fetch(`${resolveApiBase()}${path}`, {
+    headers,
+    method,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
